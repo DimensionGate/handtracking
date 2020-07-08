@@ -50,7 +50,7 @@ if __name__ == '__main__':
         '--source',
         dest='video_source',
         type=int,
-        default=0,
+        default=1,
         help='Device index of the camera.')
     parser.add_argument(
         '-nhands',
