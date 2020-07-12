@@ -21,6 +21,7 @@ from util import imresize
 from wrappers import ModelPipeline
 from utils import *
 
+
 class LowPassFilter:
     def __init__(self):
         self.prev_raw_value = None
@@ -34,6 +35,7 @@ class LowPassFilter:
         self.prev_raw_value = value
         self.prev_filtered_value = s
         return s
+
 
 class OneEuroFilter:
     def __init__(self, mincutoff=1.0, beta=0.0, dcutoff=1.0, freq=30):
@@ -56,6 +58,7 @@ class OneEuroFilter:
         cutoff = self.mincutoff + self.beta * np.abs(edx)
         return self.x_filter.process(x, self.compute_alpha(cutoff))
 
+
 def Loop1(q, q1, q2):
     global lboxes, detection_graph, sess, clf, num_frames, num_hands_detect, smoother1, smoother2, cords_smoother1, cords_smoother2, mesh_smoother1, mesh_smoother2, imgi, dery, mesh, viewer1, viewer2, model
 
@@ -63,7 +66,6 @@ def Loop1(q, q1, q2):
         if q.empty():
             continue
 
-        
         # Expand dimensions since the model expects images to have shape: [1, None, None, 3]
         ret, image_np = q.get()
         # image_np = cv2.flip(image_np, 1)
@@ -76,7 +78,8 @@ def Loop1(q, q1, q2):
         # while scores contains the confidence for each of these boxes.
         # Hint: If len(boxes) > 1 , you may assume you have found atleast one hand (within your score threshold)
 
-        boxes, scores = detector_utils.detect_objects(image_np, detection_graph, sess)
+        boxes, scores = detector_utils.detect_objects(
+            image_np, detection_graph, sess)
 
         if lboxes is None:
             lboxes = boxes
@@ -87,12 +90,13 @@ def Loop1(q, q1, q2):
         back = [False, False]
 
         # if tmp:
-            # tmp[0] = smoother1.process(tmp[0])
-            # tmp[1] = smoother2.process(tmp[1])
+        # tmp[0] = smoother1.process(tmp[0])
+        # tmp[1] = smoother2.process(tmp[1])
 
         if len(tmp) >= 2:
             if scores[0] > 0.2 and scores[1] > 0.2:
-                if math.sqrt(((boxes[0] - tmp[0]).sum()/boxes[0].size)**2) < math.sqrt(((boxes[0] - tmp[1]).sum()/boxes[0].size)**2):
+                if np.mean(tmp[1] != boxes[0]) < np.mean(tmp[0] != boxes[1]):
+                    print("change")
                     tmp2 = scores[1]
                     scores[1] = scores[0]
                     scores[0] = tmp2
@@ -102,7 +106,8 @@ def Loop1(q, q1, q2):
 
         for x in range(2):
             if scores[x] > 0.0:
-                res = [(boxes[x][2] * 480 - boxes[x][0] * 480), (boxes[x][3] * 640 - boxes[x][1] * 640)]
+                res = [(boxes[x][2] * 480 - boxes[x][0] * 480),
+                       (boxes[x][3] * 640 - boxes[x][1] * 640)]
                 if res[0] > res[1]:
                     res = (res[0]+50 - res[1])/2/480
                     boxes[x][1] -= res
@@ -113,21 +118,21 @@ def Loop1(q, q1, q2):
                     boxes[x][2] += res
 
                 if len(tmp) > x and len(boxes) > x:
-                    accuracy.append(math.sqrt(((boxes[x] - tmp[x]).sum()/boxes[x].size)**2))
+                    accuracy.append(np.mean(tmp[x] != boxes[x]))
                 lboxes.append(boxes[x])
 
         res = [True, True]
 
-        if boxes[1][0] < boxes[0][0] and boxes[1][2] > boxes[0][0]:
-            if boxes[1][0] < boxes[0][2] and boxes[1][2] > boxes[0][2]:
-                if boxes[1][1] < boxes[0][1] and boxes[1][3] > boxes[0][1]:
-                    if boxes[1][1] < boxes[0][3] and boxes[1][3] > boxes[0][3]:
-                        res[0] = False
-        if boxes[0][0] < boxes[1][0] and boxes[0][2] > boxes[1][0]:
-            if boxes[0][0] < boxes[1][2] and boxes[0][2] > boxes[1][2]:
-                if boxes[0][1] < boxes[1][1] and boxes[0][3] > boxes[1][1]:
-                    if boxes[0][1] < boxes[1][3] and boxes[0][3] > boxes[1][3]:
-                        res[1] = False
+        if (boxes[0][1] > boxes[1][1] and boxes[0][1] < boxes[1][3] and boxes[0][0] > boxes[1][0] and boxes[0][0] < boxes[1][2]):
+            if (boxes[0][3] > boxes[1][1] and boxes[0][3] < boxes[1][3] and boxes[0][2] > boxes[1][0] and boxes[0][2] < boxes[1][2]):
+                res[0] = False
+        if (boxes[1][1] > boxes[0][1] and boxes[1][1] < boxes[0][3] and boxes[1][0] > boxes[0][0] and boxes[1][0] < boxes[0][2]):
+            if (boxes[1][3] > boxes[0][1] and boxes[1][3] < boxes[0][3] and boxes[1][2] > boxes[0][0] and boxes[1][2] < boxes[0][2]):
+                res[1] = False
+
+        if res[0] and res[1]:
+            res[0] = False
+            res[1] = False
 
         i = 0
 
@@ -151,14 +156,14 @@ def Loop1(q, q1, q2):
             #                 if back[x] is True:
             #                     with open('tdata/labels.txt', 'a') as file:
             #                         file.write(f"{str(imgi/2).zfill(6)} {x} {lboxes[x][0]} {lboxes[x][1]} {lboxes[x][2]} {lboxes[x][3]}\n")
-                                
+
             #             predimg = image_np.copy()
             #             labelimg = image_np.copy()
 
             #             detector_utils.draw_box_on_image(num_hands_detect, args.score_thresh,
             #                                     scores, tmp, 640, 480,
             #                                     predimg)
-                        
+
             #             detector_utils.draw_box_on_image(num_hands_detect, args.score_thresh,
             #                                     scores, lboxes, 640, 480,
             #                                     labelimg)
@@ -171,13 +176,13 @@ def Loop1(q, q1, q2):
 
         if len(boxes) > 0:
             detectbox = np.array([[[int(boxes[0][0] * 480), int(boxes[0][2] * 480)], [int(boxes[0][1] * 640), int(boxes[0][3] * 640)]],
-                                [[int(boxes[1][0] * 480), int(boxes[1][2] * 480)], [int(boxes[1][1] * 640), int(boxes[1][3] * 640)]]]).clip(min=1)
+                                  [[int(boxes[1][0] * 480), int(boxes[1][2] * 480)], [int(boxes[1][1] * 640), int(boxes[1][3] * 640)]]]).clip(min=1)
             detectbox[0][0] = detectbox[0][0].clip(max=480)
             detectbox[1][0] = detectbox[1][0].clip(max=480)
             detectbox[0][1] = detectbox[0][1].clip(max=640)
             detectbox[1][1] = detectbox[1][1].clip(max=640)
             detection = [image_np.copy()[detectbox[0][0][0]:detectbox[0][0][1], detectbox[0][1][0]:detectbox[0][1][1]],
-                        image_np.copy()[detectbox[1][0][0]:detectbox[1][0][1], detectbox[1][1][0]:detectbox[1][1][1]]]
+                         image_np.copy()[detectbox[1][0][0]:detectbox[1][0][1], detectbox[1][1][0]:detectbox[1][1][1]]]
             try:
                 detection[0] = cv2.resize(detection[0], (128, 128))
                 dery[0] = True
@@ -188,18 +193,18 @@ def Loop1(q, q1, q2):
                 dery[1] = True
             except:
                 dery[1] = False
-            
+
             if dery[0] is True:
                 if scores[0] < 0.2:
                     dery[0] = False
-            
+
             if dery[1] is True:
                 if scores[1] < 0.2:
                     dery[1] = False
         # draw bounding boxes on frame
         detector_utils.draw_box_on_image(num_hands_detect, 0.2,
-                                        scores, boxes, 640, 480,
-                                        image_np)
+                                         scores, boxes, 640, 480,
+                                         image_np)
 
         # Calculate Frames per second (FPS)
         num_frames += 1
@@ -213,12 +218,14 @@ def Loop1(q, q1, q2):
             if q2.qsize() <= 2:
                 q2.put(detection[1].copy())
 
-        cv2.imshow('Single-Threaded Detection', cv2.cvtColor(image_np, cv2.COLOR_RGB2BGR))
+        cv2.imshow('Single-Threaded Detection',
+                   cv2.cvtColor(image_np, cv2.COLOR_RGB2BGR))
 
         if cv2.waitKey(1) & 0xFF == ord('q'):
             cv2.destroyAllWindows()
-        
+
         time.sleep(0.0016)
+
 
 def Loop2(q):
     global lboxes, detection_graph, sess, clf, num_frames, num_hands_detect, smoother1, smoother2, cords_smoother1, cords_smoother2, mesh_smoother1, mesh_smoother2, imgi, mesh, viewer1, viewer2, model
@@ -231,13 +238,13 @@ def Loop2(q):
 
         frame_large = q.get()
         # if frame_large is None:
-            # continue
+        # continue
         # if frame_large.shape[0] > frame_large.shape[1]:
-            # margin = int((frame_large.shape[0] - frame_large.shape[1]) / 2)
-            # frame_large = frame_large[margin:-margin]
+        # margin = int((frame_large.shape[0] - frame_large.shape[1]) / 2)
+        # frame_large = frame_large[margin:-margin]
         # else:
-            # margin = int((frame_large.shape[1] - frame_large.shape[0]) / 2)
-            # frame_large = frame_large[:, margin:-margin]
+        # margin = int((frame_large.shape[1] - frame_large.shape[0]) / 2)
+        # frame_large = frame_large[:, margin:-margin]
 
         frame_large = np.flip(frame_large, axis=1).copy()
         frame = frame_large.copy()
@@ -260,7 +267,7 @@ def Loop2(q):
 
         # viewer1.poll_events()
 
-        cords = cords_smoother1.process(cords)
+        # cords = cords_smoother1.process(cords)
 
         cords = cords * 50 + 60
         cords = np.delete(cords, 2, 1)
@@ -283,11 +290,12 @@ def Loop2(q):
         # cv2.polylines(frame_large, pts2d[meshindices], True, (255, 255, 255))
 
         # cv2.polylines(frame_large, v, False, (0, 0, 0))
-        cv2.imshow("Hand AI Left", frame_large)
+        cv2.imshow("Hand AI Left", cv2.resize(frame_large, (480, 480)))
 
         cv2.waitKey(1)
 
         time.sleep(0.0016)
+
 
 def Loop3(q):
     global lboxes, detection_graph, sess, clf, num_frames, num_hands_detect, smoother1, smoother2, cords_smoother1, cords_smoother2, mesh_smoother1, mesh_smoother2, imgi, mesh, viewer1, viewer2, model
@@ -295,18 +303,18 @@ def Loop3(q):
     while True:
         if q.empty():
             continue
-        
+
         # cv2.imshow('Detection', cv2.cvtColor(detection, cv2.COLOR_RGB2BGR))
 
         frame_large = q.get()
         # if frame_large is None:
-            # continue
+        # continue
         # if frame_large.shape[0] > frame_large.shape[1]:
-            # margin = int((frame_large.shape[0] - frame_large.shape[1]) / 2)
-            # frame_large = frame_large[margin:-margin]
+        # margin = int((frame_large.shape[0] - frame_large.shape[1]) / 2)
+        # frame_large = frame_large[margin:-margin]
         # else:
-            # margin = int((frame_large.shape[1] - frame_large.shape[0]) / 2)
-            # frame_large = frame_large[:, margin:-margin]
+        # margin = int((frame_large.shape[1] - frame_large.shape[0]) / 2)
+        # frame_large = frame_large[:, margin:-margin]
 
         # frame_large = np.flip(frame_large, axis=1).copy()
         frame = frame_large.copy()
@@ -329,7 +337,7 @@ def Loop3(q):
 
         # viewer2.poll_events()
 
-        cords = cords_smoother2.process(cords)
+        # cords = cords_smoother2.process(cords)
 
         cords = cords * 50 + 60
         cords = np.delete(cords, 2, 1)
@@ -352,11 +360,12 @@ def Loop3(q):
         # cv2.polylines(frame_large, pts2d[meshindices], True, (255, 255, 255))
 
         # cv2.polylines(frame_large, v, False, (0, 0, 0))
-        cv2.imshow("Hand AI Right", frame_large)
-        
+        cv2.imshow("Hand AI Right", cv2.resize(frame_large, (480, 480)))
+
         cv2.waitKey(1)
 
         time.sleep(0.0016)
+
 
 detection_graph, sess = detector_utils.load_inference_graph()
 
@@ -384,7 +393,7 @@ view_mat = axangle2mat([1, 0, 0], np.pi)
 window_size_w = 640
 window_size_h = 480
 
-hand_mesh = HandMesh(config.HAND_MESH_MODEL_PATH) 
+hand_mesh = HandMesh(config.HAND_MESH_MODEL_PATH)
 mesh = o3d.geometry.TriangleMesh()
 mesh.triangles = o3d.utility.Vector3iVector(hand_mesh.faces)
 mesh.vertices = \
@@ -447,14 +456,19 @@ quet1 = Queue()
 quet2 = Queue()
 
 
-
-t1 = threading.Thread(target=Loop1, args=(que, quet1, quet2, ))
-t2 = threading.Thread(target=Loop2, args=(quet1, ))
-t3 = threading.Thread(target=Loop3, args=(quet2, ))
+t11 = threading.Thread(target=Loop1, args=(que, quet1, quet2, ))
+t12 = threading.Thread(target=Loop1, args=(que, quet1, quet2, ))
+t21 = threading.Thread(target=Loop2, args=(quet1, ))
+t22 = threading.Thread(target=Loop2, args=(quet1, ))
+t31 = threading.Thread(target=Loop3, args=(quet2, ))
+t32 = threading.Thread(target=Loop3, args=(quet2, ))
 # t4 = threading.Thread(target=mainLoop, args=(que, ))
-t1.start()
-t2.start()
-t3.start()
+t11.start()
+t12.start()
+t21.start()
+t22.start()
+t31.start()
+t32.start()
 # t4.start()
 
 while True:
