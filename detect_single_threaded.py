@@ -78,8 +78,7 @@ def Loop1(q, q1, q2):
         # while scores contains the confidence for each of these boxes.
         # Hint: If len(boxes) > 1 , you may assume you have found atleast one hand (within your score threshold)
 
-        boxes, scores = detector_utils.detect_objects(
-            image_np, detection_graph, sess)
+        boxes, scores = detector_utils.detect_objects(image_np, detection_graph, sess)
 
         if lboxes is None:
             lboxes = boxes
