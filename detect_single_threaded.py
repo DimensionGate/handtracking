@@ -369,7 +369,7 @@ def Loop3(q):
 detection_graph, sess = detector_utils.load_inference_graph()
 
 clf = svm.SVC(random_state=0)
-cap = cv2.VideoCapture(1)
+cap = cv2.VideoCapture('http://192.168.178.195:4747/mjpegfeed?640x480')
 ret, image_np = cap.read()
 
 lboxes = []

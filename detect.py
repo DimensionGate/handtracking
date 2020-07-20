@@ -75,13 +75,20 @@ def detectHands(frame):
 
     hands = [None, None]
 
-    for x in range(2):
-        if scores[x] > 0.2:
-            hands[x] = boxes[x]
-            hands[x][0] = int(hands[x][0] * 640)
-            hands[x][1] = int(hands[x][1] * 480)
-            hands[x][2] = int(hands[x][2] * 640)
-            hands[x][3] = int(hands[x][3] * 480)
+    if scores[0] > 0.02:
+        hands[0] = boxes[0]
+        hands[0][0] = int(hands[0][0] * 640)
+        hands[0][1] = int(hands[0][1] * 480)
+        hands[0][2] = int(hands[0][2] * 640)
+        hands[0][3] = int(hands[0][3] * 480)
+
+        if scores[1] > 0.2:
+            hands[1] = boxes[1]
+            hands[1][0] = int(hands[1][0] * 640)
+            hands[1][1] = int(hands[1][1] * 480)
+            hands[1][2] = int(hands[1][2] * 640)
+            hands[1][3] = int(hands[1][3] * 480)
+
     
     isNone = [hands[0] is not None, hands[1] is not None]
     lisNone = [lhands[0] is not None, lhands[1] is not None]
@@ -138,9 +145,9 @@ while True:
     boxes = detectHands(img)
 
     if boxes[0] is not None:
-        cv2.rectangle(img, (boxes[0][0], boxes[0][1]), (boxes[0][2], boxes[0][3]), (0, 0, 255))
+        cv2.rectangle(img, (boxes[0][1], boxes[0][0]), (boxes[0][3], boxes[0][2]), (0, 0, 255))
     if boxes[1] is not None:
-        cv2.rectangle(img, (boxes[1][0], boxes[1][1]), (boxes[1][2], boxes[1][3]), (0, 0, 255))
+        cv2.rectangle(img, (boxes[1][1], boxes[1][0]), (boxes[1][3], boxes[1][2]), (0, 0, 255))
     
     cv2.imshow("Output", img)
     cv2.waitKey(1)
