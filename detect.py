@@ -23,8 +23,10 @@ from utils import *
 
 detection_graph = None
 sess = None
+threshhold = None
 
 lhands = [None, None]
+
 
 class LowPassFilter:
     def __init__(self):
@@ -69,72 +71,67 @@ def __init__():
 
 
 def detectHands(frame):
-    global detection_graph, sess, lhands
+    global detection_graph, sess, lhands, threshhold
     boxes, scores = detector_utils.detect_objects(
-        frame, detection_graph, sess)
+        cv2.cvtColor(cv2.resize(frame, (90, 60)), cv2.COLOR_BGR2RGB), detection_graph, sess)
 
     hands = [None, None]
 
-    if scores[0] > 0.02:
+    if scores[0] > 0.3:
         hands[0] = boxes[0]
-        hands[0][0] = int(hands[0][0] * 640)
-        hands[0][1] = int(hands[0][1] * 480)
-        hands[0][2] = int(hands[0][2] * 640)
-        hands[0][3] = int(hands[0][3] * 480)
+        hands[0][0] = int(hands[0][0] * 480)
+        hands[0][1] = int(hands[0][1] * 640)
+        hands[0][2] = int(hands[0][2] * 480)
+        hands[0][3] = int(hands[0][3] * 640)
 
-        if scores[1] > 0.2:
+        if scores[1] > 0.3:
             hands[1] = boxes[1]
-            hands[1][0] = int(hands[1][0] * 640)
-            hands[1][1] = int(hands[1][1] * 480)
-            hands[1][2] = int(hands[1][2] * 640)
-            hands[1][3] = int(hands[1][3] * 480)
+            hands[1][0] = int(hands[1][0] * 480)
+            hands[1][1] = int(hands[1][1] * 640)
+            hands[1][2] = int(hands[1][2] * 480)
+            hands[1][3] = int(hands[1][3] * 640)
 
-    
-    isNone = [hands[0] is not None, hands[1] is not None]
-    lisNone = [lhands[0] is not None, lhands[1] is not None]
+    # isNone = [hands[0] is not None, hands[1] is not None]
+    # lisNone = [lhands[0] is not None, lhands[1] is not None]
 
-    if isNone[0] and isNone[1]:
-        acc = [None, None]
-        if lisNone[0]:
-            acc[0] = np.mean(hands[0] == lhands[0])
-        if lisNone[1]:
-            acc[1] = np.mean(hands[0] == lhands[1])
-        
-        if lisNone[0] and lisNone[1]:
-            if acc[0] < acc[1]:
-                hands = hands[::-1]
-    elif isNone[0] or isNone[1]:
-        acc = [None, None]
-        hand = None
+    # if isNone[0] and isNone[1]:
+    #     acc = [None, None]
+    #     if lisNone[0]:
+    #         acc[0] = np.mean(hands[0] == lhands[0])
+    #     if lisNone[1]:
+    #         acc[1] = np.mean(hands[0] == lhands[1])
 
-        if isNone[0]:
-            hand = 0
-        elif isNone[1]:
-            hand = 1
-        else:
-            raise Exception("ArgumentError while Loop")
+    #     if lisNone[0] and lisNone[1]:
+    #         if acc[0] < acc[1]:
+    #             hands = hands[::-1]
+    # elif isNone[0] or isNone[1]:
+    #     acc = [None, None]
+    #     hand = None
 
-        if lisNone[0]:
-            acc[0] = np.mean(hands[hand] == lhands[0])
-        if lisNone[1]:
-            acc[1] = np.mean(hands[hand] == lhands[1])
-        
-        if lisNone[0] and lisNone[1]:
-            if acc[0] > acc[1]:
-                if hand == 1:
-                    hands = hands[::-1]
-            else:
-                if hand == 0:
-                    hands = hands[::-1]
-        # else:
-        #     if lisNone[hand]:
-        #         if acc[hand] < 0.6:
-        #             hands = hands.reverse()
+    #     if isNone[0]:
+    #         hand = 0
+    #     else:
+    #         hand = 1
 
-    lhands = hands
+    #     if lisNone[0]:
+    #         acc[0] = np.mean(hands[hand] == lhands[0])
+    #     if lisNone[1]:
+    #         acc[1] = np.mean(hands[hand] == lhands[1])
 
+    #     if lisNone[0] and lisNone[1]:
+    #         if acc[0] > acc[1]:
+    #             if hand == 1:
+    #                 hands = hands[::-1]
+    #         else:
+    #             if hand == 0:
+    #                 hands = hands[::-1]
+
+    # lhands = hands
     return hands
 
+
+def detectFinger(boxFrame):
+    pass
 
 __init__()
 
@@ -145,9 +142,16 @@ while True:
     boxes = detectHands(img)
 
     if boxes[0] is not None:
-        cv2.rectangle(img, (boxes[0][1], boxes[0][0]), (boxes[0][3], boxes[0][2]), (0, 0, 255))
+        cv2.rectangle(img, (boxes[0][1], boxes[0][0]),
+                      (boxes[0][3], boxes[0][2]), (77, 255, 9), 3, 1)
+        cv2.putText(img, "HAND 1", (boxes[0][1], boxes[0][0]),
+                    cv2.FONT_HERSHEY_SIMPLEX, 2, (0, 0, 255))
     if boxes[1] is not None:
-        cv2.rectangle(img, (boxes[1][1], boxes[1][0]), (boxes[1][3], boxes[1][2]), (0, 0, 255))
-    
+        cv2.rectangle(img, (boxes[1][1], boxes[1][0]),
+                      (boxes[1][3], boxes[1][2]), (77, 255, 9), 3, 1)
+        cv2.putText(img, "HAND 2", (boxes[1][1], boxes[1][0]),
+                    cv2.FONT_HERSHEY_SIMPLEX, 2, (0, 0, 255))
+
     cv2.imshow("Output", img)
     cv2.waitKey(1)
+    time.sleep(0.015)
