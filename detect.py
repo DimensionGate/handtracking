@@ -24,6 +24,7 @@ from utils import *
 detection_graph = None
 sess = None
 threshhold = None
+fingerDetector = None
 
 lhands = [None, None]
 
@@ -66,8 +67,9 @@ class OneEuroFilter:
 
 
 def __init__():
-    global detection_graph, sess
+    global detection_graph, sess, fingerDetector
     detection_graph, sess = detector_utils.load_inference_graph()
+    fingerDetector = ModelPipeline()
 
 
 def detectHands(frame):
@@ -83,6 +85,7 @@ def detectHands(frame):
         hands[0][1] = int(hands[0][1] * 640)
         hands[0][2] = int(hands[0][2] * 480)
         hands[0][3] = int(hands[0][3] * 640)
+        hands[0] = hands[0].astype(np.int)
 
         if scores[1] > 0.3:
             hands[1] = boxes[1]
@@ -90,48 +93,27 @@ def detectHands(frame):
             hands[1][1] = int(hands[1][1] * 640)
             hands[1][2] = int(hands[1][2] * 480)
             hands[1][3] = int(hands[1][3] * 640)
-
-    # isNone = [hands[0] is not None, hands[1] is not None]
-    # lisNone = [lhands[0] is not None, lhands[1] is not None]
-
-    # if isNone[0] and isNone[1]:
-    #     acc = [None, None]
-    #     if lisNone[0]:
-    #         acc[0] = np.mean(hands[0] == lhands[0])
-    #     if lisNone[1]:
-    #         acc[1] = np.mean(hands[0] == lhands[1])
-
-    #     if lisNone[0] and lisNone[1]:
-    #         if acc[0] < acc[1]:
-    #             hands = hands[::-1]
-    # elif isNone[0] or isNone[1]:
-    #     acc = [None, None]
-    #     hand = None
-
-    #     if isNone[0]:
-    #         hand = 0
-    #     else:
-    #         hand = 1
-
-    #     if lisNone[0]:
-    #         acc[0] = np.mean(hands[hand] == lhands[0])
-    #     if lisNone[1]:
-    #         acc[1] = np.mean(hands[hand] == lhands[1])
-
-    #     if lisNone[0] and lisNone[1]:
-    #         if acc[0] > acc[1]:
-    #             if hand == 1:
-    #                 hands = hands[::-1]
-    #         else:
-    #             if hand == 0:
-    #                 hands = hands[::-1]
-
-    # lhands = hands
+            hands[1] = hands[1].astype(np.int)
     return hands
 
 
-def detectFinger(boxFrame):
-    pass
+def detectFinger(framebox):
+    global fingerDetector
+    isLeft = True
+    cords = fingerDetector.process(framebox)[0]
+    cords = np.delete(cords, 2, 1)
+    cords = cords * 50 + 60
+    return (cords, isLeft)
+
+
+def handboxToFramebox(frame, hand):
+    detectbox = np.array([[hand[0], hand[2]], [hand[1], hand[3]]]).clip(min=1)
+    detectbox[0] = detectbox[0].clip(max=480)
+    detectbox[1] = detectbox[1].clip(max=640)
+    detection = frame[detectbox[0][0]:detectbox[0][1], detectbox[1][0]:detectbox[1][1]]
+    detection = cv2.resize(detection, (128, 128))
+    return detection
+
 
 __init__()
 
@@ -141,16 +123,27 @@ while True:
     img = cam.read()[1]
     boxes = detectHands(img)
 
+    finger = [None, None]
+
+    if boxes[0] is not None:
+        finger[0] = detectFinger(handboxToFramebox(img, boxes[0])) 
+    if boxes[1] is not None:
+        finger[1] = detectFinger(handboxToFramebox(img, boxes[1]))
+
     if boxes[0] is not None:
         cv2.rectangle(img, (boxes[0][1], boxes[0][0]),
                       (boxes[0][3], boxes[0][2]), (77, 255, 9), 3, 1)
         cv2.putText(img, "HAND 1", (boxes[0][1], boxes[0][0]),
                     cv2.FONT_HERSHEY_SIMPLEX, 2, (0, 0, 255))
+        for x in finger[0][0]:
+            cv2.drawMarker(img, (int(x[0]+boxes[0][1]), int(x[1]+boxes[0][0])), (0, 0, 0))
     if boxes[1] is not None:
         cv2.rectangle(img, (boxes[1][1], boxes[1][0]),
                       (boxes[1][3], boxes[1][2]), (77, 255, 9), 3, 1)
         cv2.putText(img, "HAND 2", (boxes[1][1], boxes[1][0]),
                     cv2.FONT_HERSHEY_SIMPLEX, 2, (0, 0, 255))
+        for x in finger[1][0]:
+            cv2.drawMarker(img, (int(x[0]+boxes[1][1]), int(x[1]+boxes[1][0])), (0, 0, 0))
 
     cv2.imshow("Output", img)
     cv2.waitKey(1)
