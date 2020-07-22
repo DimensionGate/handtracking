@@ -79,7 +79,7 @@ def detectHands(frame):
 
     hands = [None, None]
 
-    if scores[0] > 0.3:
+    if scores[0] > 0.2:
         hands[0] = boxes[0]
         hands[0][0] = int(hands[0][0] * 480)
         hands[0][1] = int(hands[0][1] * 640)
@@ -87,7 +87,7 @@ def detectHands(frame):
         hands[0][3] = int(hands[0][3] * 640)
         hands[0] = hands[0].astype(np.int)
 
-        if scores[1] > 0.3:
+        if scores[1] > 0.2:
             hands[1] = boxes[1]
             hands[1][0] = int(hands[1][0] * 480)
             hands[1][1] = int(hands[1][1] * 640)
@@ -97,12 +97,12 @@ def detectHands(frame):
     return hands
 
 
-def detectFinger(framebox):
+def detectFinger(framebox, size):
     global fingerDetector
     isLeft = True
     cords = fingerDetector.process(framebox)[0]
     cords = np.delete(cords, 2, 1)
-    cords = cords * 50 + 60
+    cords = cords * size + 60
     return (cords, isLeft)
 
 
@@ -110,9 +110,17 @@ def handboxToFramebox(frame, hand):
     detectbox = np.array([[hand[0], hand[2]], [hand[1], hand[3]]]).clip(min=1)
     detectbox[0] = detectbox[0].clip(max=480)
     detectbox[1] = detectbox[1].clip(max=640)
-    detection = frame[detectbox[0][0]:detectbox[0][1], detectbox[1][0]:detectbox[1][1]]
-    detection = cv2.resize(detection, (128, 128))
-    return detection
+    size = [(detectbox[0][1]-detectbox[0][0]), (detectbox[1][1]-detectbox[1][0])]
+    if size[0] > size[1]:
+        size = int((size[0] - size[1])/2)
+        detection = frame[detectbox[0][0]:detectbox[0][1], (detectbox[0][0]-size).clip(min=0):(detectbox[0][1]+size).clip(max=640)]
+        size = np.array([(detectbox[0][1]-detectbox[0][0]), (detectbox[0][1]-detectbox[0][0])])
+    else:
+        size = int((size[1] - size[0])/2)
+        detection = frame[(detectbox[1][0]-size).clip(min=0):(detectbox[1][1]+size).clip(max=480), detectbox[1][0]:detectbox[1][1]]
+        size = np.array([(detectbox[1][1]-detectbox[1][0]), (detectbox[1][1]-detectbox[1][0])])
+    detection = cv2.resize(detection, (128, 128))/255.
+    return (detection, size)
 
 
 __init__()
@@ -120,26 +128,29 @@ __init__()
 cam = cv2.VideoCapture('http://192.168.178.195:4747/mjpegfeed?640x480')
 
 while True:
-    img = cam.read()[1]
-    boxes = detectHands(img)
+    retval, img = cam.read()
 
     finger = [None, None]
 
+    boxes = detectHands(img)
+
     if boxes[0] is not None:
-        finger[0] = detectFinger(handboxToFramebox(img, boxes[0])) 
+        out = handboxToFramebox(img, boxes[0])
+        finger[0] = detectFinger(out[0], out[1]) 
     if boxes[1] is not None:
-        finger[1] = detectFinger(handboxToFramebox(img, boxes[1]))
+        out = handboxToFramebox(img, boxes[1])
+        finger[1] = detectFinger(out[0], out[1])
 
     if boxes[0] is not None:
         cv2.rectangle(img, (boxes[0][1], boxes[0][0]),
-                      (boxes[0][3], boxes[0][2]), (77, 255, 9), 3, 1)
+                    (boxes[0][3], boxes[0][2]), (77, 255, 9), 3, 1)
         cv2.putText(img, "HAND 1", (boxes[0][1], boxes[0][0]),
                     cv2.FONT_HERSHEY_SIMPLEX, 2, (0, 0, 255))
         for x in finger[0][0]:
             cv2.drawMarker(img, (int(x[0]+boxes[0][1]), int(x[1]+boxes[0][0])), (0, 0, 0))
     if boxes[1] is not None:
         cv2.rectangle(img, (boxes[1][1], boxes[1][0]),
-                      (boxes[1][3], boxes[1][2]), (77, 255, 9), 3, 1)
+                    (boxes[1][3], boxes[1][2]), (77, 255, 9), 3, 1)
         cv2.putText(img, "HAND 2", (boxes[1][1], boxes[1][0]),
                     cv2.FONT_HERSHEY_SIMPLEX, 2, (0, 0, 255))
         for x in finger[1][0]:
