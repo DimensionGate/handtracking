@@ -25,6 +25,7 @@ detection_graph = None
 sess = None
 threshhold = None
 fingerDetector = None
+handsize = 2.5
 
 lhands = [None, None]
 
@@ -81,45 +82,53 @@ def detectHands(frame):
 
     if scores[0] > 0.2:
         hands[0] = boxes[0]
-        hands[0][0] = int(hands[0][0] * 480)
-        hands[0][1] = int(hands[0][1] * 640)
-        hands[0][2] = int(hands[0][2] * 480)
-        hands[0][3] = int(hands[0][3] * 640)
+        size = [abs(hands[0][0]-hands[0][2]) * 480, abs(hands[0][1]-hands[0][3]) * 640]
+        if size[0] > size[1]:
+            hands[0][0] = int(hands[0][0] * 480)
+            hands[0][1] = int(hands[0][1] * 640 - size[1]/2)
+            hands[0][2] = int(hands[0][2] * 480)
+            hands[0][3] = int(hands[0][3] * 640 + size[1]/2)
+        else:
+            hands[0][0] = int(hands[0][0] * 480 - size[0]/2)
+            hands[0][1] = int(hands[0][1] * 640)
+            hands[0][2] = int(hands[0][2] * 480 + size[0]/2)
+            hands[0][3] = int(hands[0][3] * 640)
         hands[0] = hands[0].astype(np.int)
 
         if scores[1] > 0.2:
             hands[1] = boxes[1]
-            hands[1][0] = int(hands[1][0] * 480)
-            hands[1][1] = int(hands[1][1] * 640)
-            hands[1][2] = int(hands[1][2] * 480)
-            hands[1][3] = int(hands[1][3] * 640)
+            size = [abs(hands[1][0]-hands[1][2]) * 480, abs(hands[1][1]-hands[1][3]) * 640]
+            if size[0] > size[1]:
+                hands[1][0] = int(hands[1][0] * 480)
+                hands[1][1] = int(hands[1][1] * 640 - size[1]/2)
+                hands[1][2] = int(hands[1][2] * 480)
+                hands[1][3] = int(hands[1][3] * 640 + size[1]/2)
+            else:
+                hands[1][0] = int(hands[1][0] * 480 - size[0]/2)
+                hands[1][1] = int(hands[1][1] * 640)
+                hands[1][2] = int(hands[1][2] * 480 + size[0]/2)
+                hands[1][3] = int(hands[1][3] * 640)
             hands[1] = hands[1].astype(np.int)
     return hands
 
 
 def detectFinger(framebox, size):
-    global fingerDetector
+    global fingerDetector, handsize
     isLeft = True
     cords = fingerDetector.process(framebox)[0]
     cords = np.delete(cords, 2, 1)
-    cords = cords * size + 60
+    cords = cords * size + size*handsize/2
     return (cords, isLeft)
 
 
 def handboxToFramebox(frame, hand):
-    detectbox = np.array([[hand[0], hand[2]], [hand[1], hand[3]]]).clip(min=1)
+    global handsize
+    detectbox = np.array([[hand[0], hand[2]], [hand[1], hand[3]]]).clip(min=0)
     detectbox[0] = detectbox[0].clip(max=480)
     detectbox[1] = detectbox[1].clip(max=640)
-    size = [(detectbox[0][1]-detectbox[0][0]), (detectbox[1][1]-detectbox[1][0])]
-    if size[0] > size[1]:
-        size = int((size[0] - size[1])/2)
-        detection = frame[detectbox[0][0]:detectbox[0][1], (detectbox[0][0]-size).clip(min=0):(detectbox[0][1]+size).clip(max=640)]
-        size = np.array([(detectbox[0][1]-detectbox[0][0]), (detectbox[0][1]-detectbox[0][0])])
-    else:
-        size = int((size[1] - size[0])/2)
-        detection = frame[(detectbox[1][0]-size).clip(min=0):(detectbox[1][1]+size).clip(max=480), detectbox[1][0]:detectbox[1][1]]
-        size = np.array([(detectbox[1][1]-detectbox[1][0]), (detectbox[1][1]-detectbox[1][0])])
-    detection = cv2.resize(detection, (128, 128))/255.
+    detection = frame[detectbox[0][0]:detectbox[0][1], detectbox[1][0]:detectbox[1][1]]
+    size = np.array([(detectbox[0][1]-detectbox[0][0])/handsize, (detectbox[1][1]-detectbox[1][0])/handsize])
+    detection = cv2.cvtColor(cv2.resize(detection, (128, 128)), cv2.COLOR_BGR2RGB)
     return (detection, size)
 
 
